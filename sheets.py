@@ -7,14 +7,31 @@ import gspread
 logger = logging.getLogger(__name__)
 
 HEADERS = [
-    "ID", "Дата/время", "Кто сообщил", "Скалодром", "Категория",
-    "Описание", "Место/уточнение", "Медиафайлы",
-    "Комментарий ответственного", "Плановая дата решения",
-    "Необходимые закупки", "Стоимость материалов (руб.)",
-    "Стоимость доп. работ (руб.)", "Статус", "Фактическая дата устранения",
+    "ID",
+    "Дата и время",
+    "Приоритет",
+    "Категория",
+    "Кто сообщил",
+    "Источник (чат)",
+    "Описание",
+    "Комментарий ответственного",
+    "Срок",
+    "Статус",
+    "Необходимые закупки",
+    "Стоимость материалов (руб.)",
+    "Стоимость доп. работ (руб.)",
 ]
 
-STATUS_NEW = "🆕 Новая"
+STATUSES = [
+    "🆕 Новая",
+    "🔧 В работе",
+    "⏳ Ожидает материалов",
+    "✅ Выполнена",
+    "❌ Отклонена",
+]
+
+STATUS_NEW = STATUSES[0]
+NUM_COLS = len(HEADERS)  # 13 → A..M
 
 
 def _get_client() -> gspread.Client:
@@ -41,7 +58,7 @@ def _get_spreadsheet() -> gspread.Spreadsheet:
     logger.warning("СОЗДАНА НОВАЯ ТАБЛИЦА!")
     logger.warning(f"ID: {sp.id}")
     logger.warning(f"URL: https://docs.google.com/spreadsheets/d/{sp.id}")
-    logger.warning("Сохраните этот ID в SPREADSHEET_ID на Railway!")
+    logger.warning("Сохраните этот ID в переменную SPREADSHEET_ID на Railway!")
     logger.warning("=" * 60)
     return sp
 
@@ -49,44 +66,52 @@ def _get_spreadsheet() -> gspread.Spreadsheet:
 def _get_worksheet(gym: str) -> gspread.Worksheet:
     spreadsheet = _get_spreadsheet()
     tab_name = "Бутырская" if "Бутырская" in gym else "Аминьевская"
+
     try:
         ws = spreadsheet.worksheet(tab_name)
     except gspread.WorksheetNotFound:
-        ws = spreadsheet.add_worksheet(title=tab_name, rows=2000, cols=len(HEADERS))
+        ws = spreadsheet.add_worksheet(title=tab_name, rows=2000, cols=NUM_COLS)
         ws.append_row(HEADERS, value_input_option="RAW")
-        _format_header(ws)
+        _setup_sheet(spreadsheet, ws)
         logger.info(f"Создан новый лист: {tab_name}")
+
     return ws
 
 
-def _format_header(ws: gspread.Worksheet):
-    try:
-        ws.format("A1:O1", {
-            "textFormat": {"bold": True},
-            "backgroundColor": {"red": 0.12, "green": 0.22, "blue": 0.39},
-            "textFormat": {"bold": True, "foregroundColor": {"red": 1, "green": 1, "blue": 1}},
-        })
-        ws.freeze(rows=1)
-    except Exception as e:
-        logger.warning(f"Не удалось отформатировать заголовок: {e}")
+def _setup_sheet(spreadsheet: gspread.Spreadsheet, ws: gspread.Worksheet):
+    """Форматирование заголовка, выпадающий список статусов, перенос по словам."""
+    last_col = chr(ord("A") + NUM_COLS - 1)  # "M"
+    status_col_idx = HEADERS.index("Статус")  # 9 (0-based)
 
-
-def get_next_id(gym: str) -> int:
-    try:
-        ws = _get_worksheet(gym)
-        all_rows = ws.get_all_values()
-        return max(len(all_rows), 1)
-    except Exception as e:
-        logger.error(f"Ошибка получения ID: {e}")
-        return 0
-
-
-def append_incident(gym: str, data: dict):
-    ws = _get_worksheet(gym)
-    row = [
-        data["id"], data["datetime"], data["reporter"], data["gym"],
-        data["category"], data["description"], data["location"], data["media"],
-        "", "", "", "", "", STATUS_NEW, "",
-    ]
-    ws.append_row(row, value_input_option="USER_ENTERED")
-    logger.info(f"Добавлена заявка #{data['id']} в лист «{gym}»")
+    requests = [
+        # ── Заголовок: фон + белый жирный текст ──────────────────────
+        {
+            "repeatCell": {
+                "range": {
+                    "sheetId": ws.id,
+                    "startRowIndex": 0,
+                    "endRowIndex": 1,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": NUM_COLS,
+                },
+                "cell": {
+                    "userEnteredFormat": {
+                        "backgroundColor": {"red": 0.12, "green": 0.22, "blue": 0.39},
+                        "textFormat": {
+                            "bold": True,
+                            "foregroundColor": {"red": 1, "green": 1, "blue": 1},
+                        },
+                        "wrapStrategy": "WRAP",
+                    }
+                },
+                "fields": "userEnteredFormat(backgroundColor,textFormat,wrapStrategy)",
+            }
+        },
+        # ── Перенос по словам для всех данных ────────────────────────
+        {
+            "repeatCell": {
+                "range": {
+                    "sheetId": ws.id,
+                    "startRowIndex": 1,
+                    "endRowIndex": 2000,
+    
