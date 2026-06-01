@@ -47,6 +47,7 @@ def _get_worksheet(gym: str) -> gspread.Worksheet:
     """Возвращает лист по названию скалодрома, создаёт если нет."""
     client = _get_client()
     spreadsheet_id = os.environ["SPREADSHEET_ID"]
+    logger.info(f"Открываю таблицу ID={repr(spreadsheet_id)} (длина={len(spreadsheet_id)})")
     spreadsheet = client.open_by_key(spreadsheet_id)
 
     tab_name = "Бутырская" if "Бутырская" in gym else "Аминьевская"
