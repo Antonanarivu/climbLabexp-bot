@@ -23,11 +23,11 @@ HEADERS = [
 ]
 
 STATUSES = [
-    "\U0001f195 Новая",
-    "\U0001f527 В работе",
-    "⏳ Ожидает материалов",
-    "✅ Выполнена",
-    "❌ Отклонена",
+    "Новая",
+    "В работе",
+    "Ожидает материалов",
+    "Выполнена",
+    "Отклонена",
 ]
 
 STATUS_NEW = STATUSES[0]
@@ -124,21 +124,10 @@ def append_incident(gym, data):
     ws = _get_worksheet(gym)
     description_full = data["description"]
     if data.get("location"):
-        description_full += "\n\U0001f4cc " + data["location"]
+        description_full += "\n" + data["location"]
     row = [
         data["id"],
         data["datetime"],
         "",
         data["category"],
-        data["reporter"],
-        data.get("source_chat", "-"),
-        description_full,
-        "",
-        "",
-        STATUS_NEW,
-        "",
-        "",
-        "",
-    ]
-    ws.append_row(row, value_input_option="USER_ENTERED")
-    logger.info(f"Добавлена заявка #{data['id']} в лист «{gym}»")
+        data["reporter
