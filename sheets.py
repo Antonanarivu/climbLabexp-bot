@@ -72,6 +72,8 @@ def get_next_id(gym: str) -> int:
         return max(len(all_rows), 1)
     except Exception as e:
         logger.error(f"Ошибка получения ID: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            logger.error(f"Google API ответил: {e.response.text}")
         return 0
 
 
