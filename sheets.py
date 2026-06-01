@@ -3,16 +3,9 @@ import os
 import logging
 
 import gspread
-from google.oauth2.service_account import Credentials
 
 logger = logging.getLogger(__name__)
 
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive",
-]
-
-# Заголовки столбцов — bot заполняет первые 8, ответственный — остальные вручную
 HEADERS = [
     "ID",
     "Дата/время",
@@ -22,7 +15,6 @@ HEADERS = [
     "Описание",
     "Место/уточнение",
     "Медиафайлы",
-    # ── ответственный заполняет ──────────────────
     "Комментарий ответственного",
     "Плановая дата решения",
     "Необходимые закупки",
@@ -32,7 +24,6 @@ HEADERS = [
     "Фактическая дата устранения",
 ]
 
-# Допустимые значения статуса для наглядности
 STATUS_NEW = "🆕 Новая"
 
 
@@ -40,12 +31,10 @@ def _get_client() -> gspread.Client:
     creds_raw = os.environ["GOOGLE_CREDS_JSON"]
     creds_info = json.loads(creds_raw)
     logger.info(f"Используется сервисный аккаунт: {creds_info.get('client_email', 'НЕТ EMAIL')}")
-    creds = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
-    return gspread.authorize(creds)
+    return gspread.service_account_from_dict(creds_info)
 
 
 def _get_worksheet(gym: str) -> gspread.Worksheet:
-    """Возвращает лист по названию скалодрома, создаёт если нет."""
     client = _get_client()
     spreadsheet_id = os.environ["SPREADSHEET_ID"]
     logger.info(f"Открываю таблицу ID={repr(spreadsheet_id)} (длина={len(spreadsheet_id)})")
@@ -65,7 +54,6 @@ def _get_worksheet(gym: str) -> gspread.Worksheet:
 
 
 def _format_header(ws: gspread.Worksheet):
-    """Жирный заголовок и фиксация первой строки."""
     try:
         ws.format("A1:O1", {
             "textFormat": {"bold": True},
@@ -78,18 +66,16 @@ def _format_header(ws: gspread.Worksheet):
 
 
 def get_next_id(gym: str) -> int:
-    """Считает строки в листе и возвращает следующий порядковый номер."""
     try:
         ws = _get_worksheet(gym)
         all_rows = ws.get_all_values()
-        return max(len(all_rows), 1)  # строка 1 — заголовок, значит id = кол-во строк
+        return max(len(all_rows), 1)
     except Exception as e:
         logger.error(f"Ошибка получения ID: {e}")
         return 0
 
 
 def append_incident(gym: str, data: dict):
-    """Добавляет строку с данными инцидента в нужный лист."""
     ws = _get_worksheet(gym)
     row = [
         data["id"],
@@ -100,13 +86,13 @@ def append_incident(gym: str, data: dict):
         data["description"],
         data["location"],
         data["media"],
-        "",   # Комментарий ответственного
-        "",   # Плановая дата решения
-        "",   # Закупки
-        "",   # Стоимость материалов
-        "",   # Стоимость доп. работ
+        "",
+        "",
+        "",
+        "",
+        "",
         STATUS_NEW,
-        "",   # Фактическая дата устранения
+        "",
     ]
     ws.append_row(row, value_input_option="USER_ENTERED")
     logger.info(f"Добавлена заявка #{data['id']} в лист «{gym}»")
