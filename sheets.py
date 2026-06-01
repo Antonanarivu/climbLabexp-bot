@@ -71,9 +71,12 @@ def get_next_id(gym: str) -> int:
         all_rows = ws.get_all_values()
         return max(len(all_rows), 1)
     except Exception as e:
+        logger.error(f"Тип ошибки: {type(e).__name__}")
         logger.error(f"Ошибка получения ID: {e}")
-        if hasattr(e, 'response') and e.response is not None:
-            logger.error(f"Google API ответил: {e.response.text}")
+        try:
+            logger.error(f"Тело ответа: {e.response.text}")
+        except Exception as e2:
+            logger.error(f"response.text недоступен: {e2}")
         return 0
 
 
