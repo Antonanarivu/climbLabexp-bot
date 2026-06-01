@@ -39,6 +39,7 @@ STATUS_NEW = "🆕 Новая"
 def _get_client() -> gspread.Client:
     creds_raw = os.environ["GOOGLE_CREDS_JSON"]
     creds_info = json.loads(creds_raw)
+    logger.info(f"Используется сервисный аккаунт: {creds_info.get('client_email', 'НЕТ EMAIL')}")
     creds = Credentials.from_service_account_info(creds_info, scopes=SCOPES)
     return gspread.authorize(creds)
 
