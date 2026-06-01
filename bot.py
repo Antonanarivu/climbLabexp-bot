@@ -201,17 +201,25 @@ async def finalize(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         logger.error(f"Ошибка уведомления ответственного: {e}")
 
     # 3. Записываем в Google Sheets
-    media_info = f"{len(media)} файл(ов)" if media else "—"
+    group_id = data.get("group_id")
+    source_chat = "—"
+    if group_id:
+        try:
+            chat_info = await context.bot.get_chat(group_id)
+            source_chat = chat_info.title or str(group_id)
+        except Exception:
+            source_chat = str(group_id)
+
     try:
         append_incident(data["gym"], {
             "id": incident_id,
             "datetime": data["datetime"],
             "reporter": data["reporter"],
-            "gym": data["gym"],
+            "priority": data.get("priority", "—"),
             "category": data["category"],
             "description": data["description"],
-            "location": data["location"],
-            "media": media_info,
+            "location": data.get("location", ""),
+            "source_chat": source_chat,
         })
     except Exception as e:
         logger.error(f"Ошибка записи в Google Sheets: {e}")
@@ -284,12 +292,4 @@ def main():
     )
 
     from telegram.ext import ChatMemberHandler
-    app.add_handler(ChatMemberHandler(on_bot_added_to_group, ChatMemberHandler.MY_CHAT_MEMBER))
-    app.add_handler(conv)
-
-    logger.info("Бот запущен...")
-    app.run_polling(drop_pending_updates=True)
-
-
-if __name__ == "__main__":
-    main()
+    app.a
